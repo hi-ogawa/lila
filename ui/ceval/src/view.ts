@@ -348,9 +348,9 @@ export function renderPvs(ctrl: ParentCtrl): VNode | undefined {
       },
     },
     [...Array(multiPv).keys()].map(function (i) {
-      if (!pvs[i]) return h('div.pv');
+      if (!pvs[i]) return h('div.pv.pv--nowrap');
       return h(
-        'div.pv',
+        'div.pv.pv--nowrap',
         threat
           ? {}
           : {
@@ -358,13 +358,10 @@ export function renderPvs(ctrl: ParentCtrl): VNode | undefined {
             },
         [
           multiPv > 1 ? h('strong', defined(pvs[i].mate) ? '#' + pvs[i].mate : renderEval(pvs[i].cp!)) : null,
-          h(
-            'span',
-            pos.unwrap(
-              pos => renderPv(ctrl, pos.clone(), pvs[i].moves.slice(0, 12), threat),
-              _ => '--'
-            )
-          ),
+          ...pos.unwrap(
+            pos => renderPv(ctrl, pos.clone(), pvs[i].moves.slice(0, 16), threat),
+            _ => ['--']
+          )
         ]
       );
     })

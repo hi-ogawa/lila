@@ -3,9 +3,8 @@
   font-size: 13px;
 
   .pv {
-    @extend %nowrap-ellipsis;
-
-    height: 2em;
+    display: flex;
+    flex-wrap: wrap;
     line-height: 2em;
     border-top: $border;
 
@@ -14,20 +13,22 @@
       cursor: pointer;
     }
 
+    &.pv--nowrap {
+      @extend %nowrap-ellipsis;
+      display: block; // "flex" doesn't support ellipsis so switch it to "block"
+      flex-wrap: initial;
+      height: 2em;
+    }
+
     strong {
       display: inline-block;
       width: 34px;
       text-align: center;
+      font-weight: bold;
     }
 
-    > span {
-      @extend %san;
-
+    span {
       margin-left: 4px;
-
-      > span {
-        margin-right: 4px;
-      }
     }
 
     &[data-uci] .pv-san:hover {
