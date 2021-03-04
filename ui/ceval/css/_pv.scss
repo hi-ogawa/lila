@@ -20,10 +20,18 @@
       text-align: center;
     }
 
-    span {
+    > span {
       @extend %san;
 
       margin-left: 4px;
+
+      > span {
+        margin-right: 4px;
+      }
+    }
+
+    &[data-uci] .pv-san:hover {
+      color: $c-primary;
     }
   }
 }

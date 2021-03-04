@@ -2,8 +2,9 @@ import * as winningChances from './winningChances';
 import { defined } from 'common';
 import { Eval, CevalCtrl, ParentCtrl, NodeEvals } from './types';
 import { h } from 'snabbdom';
+import { Position } from 'chessops/chess';
 import { lichessVariantRules } from 'chessops/compat';
-import { makeSanVariation } from 'chessops/san';
+import { makeSanAndPlay } from 'chessops/san';
 import { opposite, parseUci } from 'chessops/util';
 import { parseFen } from 'chessops/fen';
 import { renderEval } from './util';
@@ -269,6 +270,51 @@ function checkHover(el: HTMLElement, instance: CevalCtrl): void {
   );
 }
 
+function renderPv(ctrl: ParentCtrl, pos: Position, pv: Uci[], threatMode: boolean) {
+  const sleep = (msec: number) => new Promise(resolve => setTimeout(resolve, msec));
+
+  const play = async (moves: Uci[]) => {
+    // TODO: how to wait until `sendAnaMove` returns (i.e. `addNode`) ?
+    //       or can we `addNode` directly? (addNodes?)
+    for (let i = 0; i < moves.length; i++) {
+      if (i > 0) {
+        await sleep(1000 / 2);
+      }
+      ctrl.playUci(moves[i]);
+    }
+  };
+
+  const vnodes: VNode[] = [];
+  let key = '';
+
+  for (let i = 0; i < pv.length; i++) {
+    let text;
+    if (pos.turn === 'white') {
+      text = `${pos.fullmoves}.`;
+    } else if (i === 0) {
+      text = `${pos.fullmoves}...`;
+    }
+    if (text) {
+      vnodes.push(h('span', { key: text }, text));
+    }
+
+    const uci = pv[i];
+    const san = makeSanAndPlay(pos, parseUci(uci)!);
+    if (san === '--') {
+      break;
+    }
+
+    key += '|' + uci;
+    const hook = {
+      insert: (vnode: VNode) => (vnode.elm as HTMLElement).addEventListener('click', () => play(pv.slice(0, i + 1))),
+    };
+
+    vnodes.push(h('span.pv-san', { key, hook: threatMode ? {} : hook }, san));
+  }
+
+  return vnodes;
+}
+
 export function renderPvs(ctrl: ParentCtrl): VNode | undefined {
   const instance = ctrl.getCeval();
   if (!instance.allowed() || !instance.possible || !instance.enabled()) return;
@@ -296,10 +342,6 @@ export function renderPvs(ctrl: ParentCtrl): VNode | undefined {
           const el = vnode.elm as HTMLElement;
           el.addEventListener('mouseover', (e: MouseEvent) => instance.setHovering(getElFen(el), getElUci(e)));
           el.addEventListener('mouseout', () => instance.setHovering(getElFen(el)));
-          el.addEventListener('mousedown', (e: MouseEvent) => {
-            const uci = getElUci(e);
-            if (uci) ctrl.playUci(uci);
-          });
           checkHover(el, instance);
         },
         postpatch: (_, vnode) => checkHover(vnode.elm as HTMLElement, instance),
@@ -319,11 +361,7 @@ export function renderPvs(ctrl: ParentCtrl): VNode | undefined {
           h(
             'span',
             pos.unwrap(
-              pos =>
-                makeSanVariation(
-                  pos,
-                  pvs[i].moves.slice(0, 12).map(m => parseUci(m)!)
-                ),
+              pos => renderPv(ctrl, pos.clone(), pvs[i].moves.slice(0, 12), threat),
               _ => '--'
             )
           ),
