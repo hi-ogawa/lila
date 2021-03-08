@@ -52,3 +52,65 @@ async function handleNotificationClick(event: NotificationEvent) {
 }
 
 self.addEventListener('notificationclick', e => e.waitUntil(handleNotificationClick(e)));
+
+//
+// Selective caching
+//
+
+interface CacheInfo {
+  key: string;
+  matcher: (url: URL) => boolean;
+}
+
+const CACHE_INFOS: CacheInfo[] = [
+  {
+    key: 'stockfish-nnue.wasm--0.0.2',
+    matcher: (url: URL) => url.pathname.startsWith('/assets/_85a969/vendor/stockfish-nnue.wasm'),
+  },
+];
+
+const CACHE_KEYS = CACHE_INFOS.map(c => c.key);
+
+async function handleInstall() {
+  await self.skipWaiting();
+}
+
+async function handleActivate() {
+  const keys = await caches.keys();
+  for (const key of keys) {
+    if (!CACHE_KEYS.includes(key)) {
+      await caches.delete(key);
+    }
+  }
+  await self.clients.claim();
+}
+
+async function handleFetch(event: FetchEvent) {
+  const url = new URL(event.request.url);
+
+  // Cache hit
+  let response = await caches.match(event.request);
+  if (response) {
+    return response;
+  }
+
+  // Fetch
+  response = await fetch(event.request.clone());
+
+  // Cache update
+  if (response.ok) {
+    for (const { key, matcher } of CACHE_INFOS) {
+      if (matcher(url)) {
+        const cache = await caches.open(key);
+        await cache.put(event.request, response.clone());
+        break;
+      }
+    }
+  }
+
+  return response;
+}
+
+self.addEventListener('install', event => event.waitUntil(handleInstall()));
+self.addEventListener('activate', event => event.waitUntil(handleActivate()));
+self.addEventListener('fetch', event => event.respondWith(handleFetch(event)));

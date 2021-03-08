@@ -2,7 +2,7 @@ import { assetUrl, jsModule } from './assets';
 import { storage } from './storage';
 
 export default function () {
-  if ('serviceWorker' in navigator && 'Notification' in window && 'PushManager' in window) {
+  if ('serviceWorker' in navigator && 'Notification' in window && 'PushManager' in window && 'caches' in window) {
     const workerUrl = new URL(
       assetUrl(jsModule('serviceWorker'), {
         sameDomain: true,
