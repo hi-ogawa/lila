@@ -31,6 +31,9 @@ export default class Filter {
       form: data,
       filter: toFormObject(data),
     };
+    if (data === null) {
+      this.store.remove();
+    }
   };
 
   save = (form: HTMLFormElement) => {
